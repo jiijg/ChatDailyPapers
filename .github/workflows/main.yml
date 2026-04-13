@@ -25,29 +25,33 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
-      # 🔥 强制安装（解决你当前 numpy 报错的关键）
-      - name: Install core dependencies
-        run: |
-          pip install numpy
-          pip install requests feedparser
-
-      # 🔥 如果 requirements.txt 存在再安装
-      - name: Install requirements.txt
+      # 🔥 核心修复：所有依赖一次性保证装齐
+      - name: Install dependencies (FULL SAFE MODE)
         run: |
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
 
-      - name: Verify installed packages
+          # 强制补齐常见缺失包（解决你现在 numpy / pytz 问题）
+          pip install numpy
+          pip install pytz
+          pip install requests
+          pip install feedparser
+
+      # 🔍 检查环境（防止 silent fail）
+      - name: Verify environment
         run: pip list
 
+      # 🚀 运行脚本
       - name: Run script
         env:
           TOKEN: ${{ secrets.TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python main.py
 
+      # 💾 提交变化（如果有生成文件）
       - name: Commit changes
         uses: elstudio/actions-js-build/commit@v3
         with:
+          commitMessage: Automated snapshot
           commitMessage: Automated snapshot
