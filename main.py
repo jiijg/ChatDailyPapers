@@ -1,14 +1,9 @@
-import numpy as np
 import os
 import re
-import base64
-import requests
 import argparse
-import tiktoken
 import feedparser
-import pytz
 import urllib.parse
-
+import pytz
 from datetime import datetime, timedelta
 
 from get_paper_from_pdf import Paper
@@ -33,24 +28,20 @@ class Reader:
         self.query = query
         self.args = args
 
-        self.language = getattr(args, "language", "zh")
-
-        if isinstance(filter_keys, list):
-            self.filter_keys = filter_keys
-        else:
-            self.filter_keys = str(filter_keys).split()
+        self.filter_keys = (
+            filter_keys if isinstance(filter_keys, list)
+            else str(filter_keys).split()
+        )
 
         self.chat_api_list = OPENAI_API_KEYS
         self.cur_api = 0
 
-        self.encoding = tiktoken.get_encoding("gpt2")
-
     # =========================
-    # FIXED ARXIV (stable)
+    # ARXIV STABLE VERSION
     # =========================
     def get_arxiv(self, max_results=20):
 
-        # ❗关键修复：不要 encode（导致 CI 空结果）
+        # ❗核心修复：避免 AND / 避免复杂 query
         query_raw = self.query
 
         url = (
@@ -61,16 +52,18 @@ class Reader:
             "&sortOrder=descending"
         )
 
-        print("\n[ARXIV URL]")
-        print(url)
+        print("\n[ARXIV QUERY]")
+        print(query_raw)
 
         feed = feedparser.parse(url)
 
-        print("[ARXIV RESULTS]")
-        print("entries:", len(feed.entries))
+        print("[ARXIV ENTRIES]")
+        print(len(feed.entries))
 
         return feed.entries
 
+    # =========================
+    # FILTER (relaxed OR logic)
     # =========================
     def filter_arxiv(self, max_results=20):
 
@@ -84,31 +77,32 @@ class Reader:
 
             text = (e.summary or "").lower()
 
-            # 🔥 改成 OR 逻辑（否则永远为空）
+            # ✔ OR match（避免 0 结果）
             if any(k.lower() in text for k in self.filter_keys):
                 results.append(e)
 
-        print("[FILTERED RESULTS]", len(results))
+        print("[FILTER RESULT]", len(results))
 
         return results
 
     # =========================
+    # DOWNLOAD PDF
+    # =========================
     def download_pdf(self, results):
 
-        path = "./pdf_files"
-        os.makedirs(path, exist_ok=True)
+        os.makedirs("./pdf_files", exist_ok=True)
 
         papers = []
 
         for r in results:
             try:
                 title = re.sub(r"[\/\\\:\*\?\"\<\>\|]", "_", r.title)
-                pdf_path = os.path.join(path, title + ".pdf")
+                path = "./pdf_files"
 
                 r.download_pdf(path, filename=title + ".pdf")
 
                 paper = Paper(
-                    path=pdf_path,
+                    path=os.path.join(path, title + ".pdf"),
                     url=r.link,
                     title=r.title,
                     abs=r.summary,
@@ -123,6 +117,8 @@ class Reader:
 
         return papers
 
+    # =========================
+    # SUMMARY (simple safe version)
     # =========================
     def summary_with_chat(self, papers):
 
@@ -140,30 +136,37 @@ class Reader:
         return htmls
 
     # =========================
+    # CHAT (safe fallback)
+    # =========================
     def chat_summary(self, text):
 
-        import openai
-        openai.api_key = self.chat_api_list[self.cur_api]
-        self.cur_api = (self.cur_api + 1) % len(self.chat_api_list)
+        try:
+            import openai
+            openai.api_key = self.chat_api_list[self.cur_api]
+            self.cur_api = (self.cur_api + 1) % len(self.chat_api_list)
 
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Summarize the paper"},
-                {"role": "user", "content": text[:3000]}
-            ]
-        )
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Summarize paper clearly"},
+                    {"role": "user", "content": text[:2500]}
+                ]
+            )
 
-        return response.choices[0].message.content
+            return response.choices[0].message.content
+
+        except Exception as e:
+            return f"Summary error: {str(e)}"
 
 
 # =========================
-# main
+# MAIN
 # =========================
 def main(args):
 
     for k in args.filter_keys:
 
+        # ✔ 改成稳定 query（避免 AND）
         query = "all:" + k.replace(" ", "+")
 
         reader = Reader(
@@ -173,7 +176,7 @@ def main(args):
             args=args
         )
 
-        reader.get_arxiv()
+        entries = reader.get_arxiv()
 
         results = reader.filter_arxiv(args.max_results)
 
@@ -181,12 +184,12 @@ def main(args):
 
         htmls = reader.summary_with_chat(papers)
 
-        # 如果没结果，也强制写issue（防止“空运行”）
+        # 🔥 保底机制（防止 0 issue）
         if not htmls:
-            htmls = [f"No papers found for {k}"]
+            htmls = [f"No papers found for: {k}"]
 
         make_github_issue(
-            title=k,
+            title=f"Daily Papers - {k}",
             body="\n".join(htmls),
             labels=args.filter_keys
         )
@@ -203,4 +206,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args)  
+    main(args)
