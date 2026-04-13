@@ -1,17 +1,19 @@
-name: "daily alerts"
+name: daily-alerts
 
 on:
+  workflow_dispatch:   # ✅ 手动触发（关键）
   push:
     branches:
       - main
-
-  schedule:
-    - cron: "10 20 * * 1-6"
 
 jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+
+    permissions:
+      contents: write
+      issues: write
 
     steps:
       - name: Checkout repository
@@ -27,13 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
-          pip install numpy
-          pip install pytz
-          pip install requests
-          pip install feedparser
+          pip install numpy pytz requests feedparser openai tiktoken
 
       - name: Verify environment
         run: pip list
@@ -47,4 +43,4 @@ jobs:
       - name: Commit changes
         uses: elstudio/actions-js-build/commit@v3
         with:
-          commitMessage: Automated snapshot
+          commitMessage: Automated snapshotd snapshot
