@@ -5,19 +5,19 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 # Authentication for user filing issue (must have read/write access to repository to add issue to)
-USERNAME = ''
+USERNAME = 'jiijg'
 TOKEN = ''
 
 # The repository to add this issue to
-REPO_OWNER = ''
-REPO_NAME = ''
+REPO_OWNER = 'jiijg'
+REPO_NAME = 'ChatDailyPapers'
 
 # Set new submission url of subject
 NEW_SUB_URL = 'https://arxiv.org/list/cs/new'
 
 # Keywords to search
-KEYWORD_LIST = ["", ]
+KEYWORD_LIST = ["Myofascial Trigger Points", "Dry Needling","Selective Functional Movement Assessment (SFMA)","High-Velocity Low-Amplitude Thrust"]
 
 
 OPENAI_API_KEYS = ['', ]
-LANGUAGE = "zh"  # zh | en
+LANGUAGE = "zh"  # zh | en$
