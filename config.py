@@ -16,7 +16,7 @@ REPO_NAME = 'ChatDailyPapers'
 NEW_SUB_URL = 'https://arxiv.org/list/cs/new'
 
 # Keywords to search
-KEYWORD_LIST = ["Myofascial Trigger Points", "Dry Needling","Selective Functional Movement Assessment (SFMA)","High-Velocity Low-Amplitude Thrust"]
+KEYWORD_LIST = ["Myofascial Trigger Points", "Dry Needling","Selective Functional Movement Assessment ","High-Velocity Low-Amplitude Thrust"]
 
 
 OPENAI_API_KEYS = ['', ]
